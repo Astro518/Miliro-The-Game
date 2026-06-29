@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Miliro - Dark Fantasy Action RPG</title>
+  <!-- SEO & Icons -->
+  <meta name="description" content="Embark on a dark fantasy journey through a fallen kingdom in Miliro, an immersive 3D Action RPG built with Three.js. Real-time combat, challenging bosses, and atmospheric exploration.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./src/styles.css">
+</head>
+<body>
+  <!-- 3D Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Cinematic Vignette / Ambient Overlay -->
+  <div id="vignette"></div>
+
+  <!-- MAIN HUD -->
+  <div id="hud" class="hud-container hidden">
+    <!-- Top Left: Player Status -->
+    <div class="player-bars">
+      <div class="character-portrait">
+        <span class="level-indicator">LV.<span id="hud-level">1</span></span>
+      </div>
+      <div class="bars-wrapper">
+        <div class="bar-container health-container">
+          <div class="bar-fill health-fill" id="hud-health-bar" style="width: 100%;"></div>
+          <div class="bar-label">HP</div>
+          <div class="bar-text"><span id="hud-health-val">100</span> / <span id="hud-health-max">100</span></div>
+        </div>
+        <div class="bar-container stamina-container">
+          <div class="bar-fill stamina-fill" id="hud-stamina-bar" style="width: 100%;"></div>
+          <div class="bar-label">ST</div>
+          <div class="bar-text"><span id="hud-stamina-val">100</span> / <span id="hud-stamina-max">100</span></div>
+        </div>
+        <div class="bar-container xp-container">
+          <div class="bar-fill xp-fill" id="hud-xp-bar" style="width: 0%;"></div>
+          <div class="bar-label">XP</div>
+          <div class="bar-text"><span id="hud-xp-val">0</span> / <span id="hud-xp-max">100</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Right: Quest & Souls/Gold Counter -->
+    <div class="top-right-hud">
+      <div class="currency-counter">
+        <svg viewBox="0 0 24 24" class="currency-icon">
+          <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M12,6A6,6 0 0,0 6,12A6,6 0 0,0 12,18A6,6 0 0,0 18,12A6,6 0 0,0 12,6M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8Z"/>
+        </svg>
+        <span id="hud-souls">0</span> <span class="currency-label">Souls</span>
+      </div>
+      <div class="quest-tracker" id="quest-tracker">
+        <div class="quest-title">CURRENT QUEST</div>
+        <div class="quest-desc" id="quest-desc">Explore the ruins and defeat the skeletal guards (0/3)</div>
+      </div>
+    </div>
+
+    <!-- Lock-on Reticle (dynamically placed in UI.js) -->
+    <div id="lockon-reticle" class="hidden">
+      <div class="reticle-bracket bracket-tl"></div>
+      <div class="reticle-bracket bracket-tr"></div>
+      <div class="reticle-bracket bracket-bl"></div>
+      <div class="reticle-bracket bracket-br"></div>
+      <div class="reticle-dot"></div>
+    </div>
+
+    <!-- Active Boss Health Bar -->
+    <div id="boss-hud" class="boss-hud-container hidden">
+      <div class="boss-info">
+        <span class="boss-title" id="boss-name">Malakor, The Ash Knight</span>
+        <span class="boss-subtitle">Ruler of the Ruined Keep</span>
+      </div>
+      <div class="boss-bar-outer">
+        <div class="boss-bar-fill" id="boss-health-bar" style="width: 100%;"></div>
+        <div class="boss-bar-shield" id="boss-shield-bar" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <!-- Dynamic Damage Numbers Container -->
+    <div id="damage-numbers-container"></div>
+
+    <!-- Bottom Center: Item Quick Slot -->
+    <div class="quick-slots">
+      <div class="quick-slot active" id="quick-slot-potion">
+        <div class="slot-key">ESTUS (Q)</div>
+        <div class="slot-icon">
+          <svg viewBox="0 0 24 24" class="potion-svg">
+            <path d="M12,2A3,3 0 0,0 9,5V6H7A2,2 0 0,0 5,8V18A4,4 0 0,0 9,22H15A4,4 0 0,0 19,18V8A2,2 0 0,0 17,6H15V5A3,3 0 0,0 12,2M12,4A1,1 0 0,1 13,5V6H11V5A1,1 0 0,1 12,4M7,8H17V18A2,2 0 0,1 15,20H9A2,2 0 0,1 7,18V8M9,10V12A3,3 0 0,0 12,15A3,3 0 0,0 15,12V10H9Z"/>
+          </svg>
+        </div>
+        <div class="slot-count" id="potion-count">5</div>
+      </div>
+      <div class="controls-hint">
+        <span>WASD: Move</span> | <span>Mouse: Look</span> | <span>L-Click: Attack (Combo)</span> | <span>R-Click: Lock-on</span> | <span>Space: Dodge / Roll</span> | <span>Shift: Sprint</span> | <span>I: Inventory</span> | <span>ESC: Pause</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TITLE MENU / MAIN MENU -->
+  <div id="main-menu" class="overlay-menu active">
+    <div class="menu-background-graphic"></div>
+    <div class="menu-content">
+      <h1 class="game-title">MILIRO</h1>
+      <p class="game-subtitle">A Dark Fantasy Action RPG</p>
+      <div class="divider"></div>
+      <div class="menu-buttons">
+        <button id="btn-start" class="btn-primary">BEGIN JOURNEY</button>
+        <button id="btn-load" class="btn-secondary" disabled>CONTINUE</button>
+        <button id="btn-tutorial" class="btn-secondary">CONTROLS & TUTORIAL</button>
+        <button id="btn-credits" class="btn-secondary">CREDITS</button>
+      </div>
+      <div class="lore-snippet">
+        "Rise, Ashborn. The flame of Miliro fades into cinder. Traverse the Ruined Keep, reclaim the Lord's Soul, and redeem the fallen kingdom."
+      </div>
+    </div>
+  </div>
+
+  <!-- PAUSE MENU -->
+  <div id="pause-menu" class="overlay-menu hidden">
+    <div class="menu-content glassmorphism">
+      <h2 class="menu-title">JOURNEY PAUSED</h2>
+      <div class="divider"></div>
+      <div class="menu-buttons">
+        <button id="btn-resume" class="btn-primary">RESUME</button>
+        <button id="btn-save" class="btn-secondary">SAVE GAME</button>
+        <button id="btn-inventory-pause" class="btn-secondary">OPEN INVENTORY</button>
+        <button id="btn-menu-exit" class="btn-danger">ABANDON JOURNEY (EXIT)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INVENTORY SCREEN -->
+  <div id="inventory-menu" class="overlay-menu hidden">
+    <div class="inventory-container glassmorphism">
+      <div class="inventory-header">
+        <h2>EQUIPMENT & INVENTORY</h2>
+        <button id="btn-close-inventory" class="btn-close">&times;</button>
+      </div>
+      <div class="inventory-body">
+        <div class="inventory-panel equipment-panel">
+          <h3>EQUIPPED WEAPON</h3>
+          <div class="equip-slot" id="equip-slot-weapon">
+            <div class="slot-details">
+              <div class="item-name" id="equipped-weapon-name">Rusted Greatsword</div>
+              <div class="item-stat" id="equipped-weapon-stat">ATK: 18 | Scale: STR (C)</div>
+              <div class="item-desc">A heavy double-edged blade carried by the legionaries of Miliro. Weathered but deadly.</div>
+            </div>
+          </div>
+          <div class="character-stats">
+            <h3>CHARACTER DETAILS</h3>
+            <div class="stat-row"><span>Level:</span> <strong id="stat-level">1</strong></div>
+            <div class="stat-row"><span>HP:</span> <strong><span id="stat-hp-current">100</span> / <span id="stat-hp-max">100</span></strong></div>
+            <div class="stat-row"><span>Stamina:</span> <strong><span id="stat-st-current">100</span> / <span id="stat-st-max">100</span></strong></div>
+            <div class="stat-row"><span>Strength:</span> <strong><span id="stat-str">12</span> <button class="btn-level-up" data-stat="str">+</button></strong></div>
+            <div class="stat-row"><span>Dexterity:</span> <strong><span id="stat-dex">10</span> <button class="btn-level-up" data-stat="dex">+</button></strong></div>
+            <div class="stat-row"><span>Vitality:</span> <strong><span id="stat-vit">11</span> <button class="btn-level-up" data-stat="vit">+</button></strong></div>
+            <div class="stat-info">Leveling up costs <strong id="level-cost">50</strong> Souls. Available Souls: <strong id="stat-souls">0</strong></div>
+          </div>
+        </div>
+        <div class="inventory-panel items-grid-panel">
+          <h3>POSSESSIONS</h3>
+          <div class="items-grid" id="inventory-grid">
+            <!-- Items dynamically generated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TUTORIAL MODAL -->
+  <div id="tutorial-modal" class="overlay-menu hidden">
+    <div class="menu-content glassmorphism tutorial-content">
+      <h2>CONTROLS & COMBAT</h2>
+      <div class="divider"></div>
+      <div class="tutorial-grid">
+        <div class="tutorial-section">
+          <h3>MOVEMENT</h3>
+          <ul>
+            <li><strong>WASD</strong>: Move Character</li>
+            <li><strong>Shift (Hold)</strong>: Sprint</li>
+            <li><strong>Spacebar</strong>: Dodge Roll (Invincibility Frames)</li>
+            <li><strong>Mouse</strong>: Look around</li>
+          </ul>
+        </div>
+        <div class="tutorial-section">
+          <h3>COMBAT</h3>
+          <ul>
+            <li><strong>Left Click</strong>: Light Melee Attack (3-hit Combo)</li>
+            <li><strong>Right Click</strong>: Toggle Lock-on Target</li>
+            <li><strong>Q Key</strong>: Consume Estus Flask (Heals 40 HP)</li>
+            <li><strong>R Key</strong>: Reset Camera / Target Switch</li>
+          </ul>
+        </div>
+      </div>
+      <button id="btn-close-tutorial" class="btn-primary">UNDERSTOOD</button>
+    </div>
+  </div>
+
+  <!-- GAME OVER OVERLAY -->
+  <div id="game-over-screen" class="overlay-menu game-over-overlay hidden">
+    <div class="game-over-text animate-fade-in">
+      <h1>YOU DIED</h1>
+      <p class="game-over-desc">Your flame has guttered out. The Souls you gathered return to the ash.</p>
+      <button id="btn-respawn" class="btn-primary">RESPAWN AT BONFIRE</button>
+    </div>
+  </div>
+
+  <!-- VICTORY OVERLAY -->
+  <div id="victory-screen" class="overlay-menu victory-overlay hidden">
+    <div class="victory-text animate-fade-in">
+      <h1>HEIR OF FIRE DEFEATED</h1>
+      <p class="victory-desc">The Keep is cleansed. The sovereign flame begins to rekindle.</p>
+      <button id="btn-continue-victory" class="btn-primary">CONTINUE EXPLORING</button>
+    </div>
+  </div>
+
+  <!-- Audio Player (Background Web Audio) -->
+  <div id="audio-container"></div>
+
+  <!-- Vite script entry -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
